@@ -1,4 +1,4 @@
---// Services ct
+--// Services ctt
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -16,7 +16,7 @@ local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 local blur = Instance.new("BlurEffect", Lighting)
 blur.Size = 8
 
---// Utility: Create fancy frame with glass effect, gradient, shadow
+--// Utility: Create fancy frame with glass effect and shadow
 local function FancyFrame(parent, size, pos, color, cornerRadius)
     local frame = Instance.new("Frame", parent)
     frame.Size = size
@@ -46,7 +46,7 @@ end
 local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
 ScreenGui.IgnoreGuiInset = true
 
-local MainFrame = FancyFrame(ScreenGui, UDim2.new(0, 350, 0, 180), UDim2.new(0.85, -180, 0.86, 0), Color3.fromRGB(30, 20, 40), UDim.new(0, 22))
+local MainFrame = FancyFrame(ScreenGui, UDim2.new(0, 350, 0, 190), UDim2.new(0.85, -180, 0.86, 0), Color3.fromRGB(30, 20, 40), UDim.new(0, 22))
 MainFrame.Active = true
 MainFrame.Draggable = true
 
@@ -166,7 +166,7 @@ local function Notify(title, text, duration)
     end)
 end
 
--- Fruit ESP with pulsing and rainbow color
+-- Fruit ESP with pulsing rainbow text
 local function AddESP(fruit)
     if not fruit.PrimaryPart then return end
     local bgui = Instance.new("BillboardGui", fruit)
@@ -195,7 +195,7 @@ local function AddESP(fruit)
     end)
 end
 
--- Server list fetch function
+-- Server list function
 local function ListServers(cursor)
     local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=50"
     if cursor then url = url .. "&cursor=" .. cursor end
@@ -203,19 +203,19 @@ local function ListServers(cursor)
     return HttpService:JSONDecode(response)
 end
 
--- Emergency server hop fallback
+-- Emergency Server Hop fallback
 local function EmergencyServerHop()
-    Notify("Emergency", "Script error or stuck. Hopping server...", 4)
+    Notify("Emergency", "You have used Emergency Server Hop. Please wait while we hop servers. Sorry for the inconvenience.", 5)
     wait(3)
     local success, err = pcall(function()
         TeleportService:Teleport(game.PlaceId, LocalPlayer)
     end)
     if not success then
-        warn("Emergency hop failed:", err)
+        warn("Emergency server hop failed:", err)
     end
 end
 
--- Server hopping with countdown and error handling
+-- Server hop function with countdown and error handling
 local function HopServer()
     for i = 5, 1, -1 do
         StatusLabel.Text = ("Status: Server hop in %ds..."):format(i)
@@ -246,11 +246,56 @@ local function HopServer()
     end
 end
 
--- Maximum fruit storage allowed
+-- Max fruit storage limit
 local MAX_FRUITS = 2
 local fruitsCollected = 0
 
--- Main loop
+-- Add Emergency Server Hop Button
+local button = Instance.new("TextButton", MainFrame)
+button.Size = UDim2.new(0, 140, 0, 32)
+button.Position = UDim2.new(0.5, -70, 0.9, -10)
+button.BackgroundColor3 = Color3.fromRGB(180, 30, 50)
+button.BackgroundTransparency = 0.15
+button.AutoButtonColor = true
+button.Font = Enum.Font.GothamBold
+button.TextColor3 = Color3.fromRGB(255, 220, 220)
+button.TextScaled = true
+button.Text = "Emergency Server Hop"
+local buttonCorner = Instance.new("UICorner", button)
+buttonCorner.CornerRadius = UDim.new(0, 12)
+
+button.MouseButton1Click:Connect(function()
+    Notify("Warning", "You have used Emergency Server Hop. Please wait while we hop servers. Sorry for the inconvenience.", 5)
+    wait(1)
+    EmergencyServerHop()
+end)
+
+-- Startup Warning Label above the Emergency Hop Button
+local warningLabel = Instance.new("TextLabel", MainFrame)
+warningLabel.Size = UDim2.new(0, 280, 0, 40)
+warningLabel.Position = UDim2.new(0.5, -140, 0.82, -50)
+warningLabel.BackgroundTransparency = 0.7
+warningLabel.BackgroundColor3 = Color3.fromRGB(100, 25, 25)
+warningLabel.TextColor3 = Color3.fromRGB(255, 180, 180)
+warningLabel.Font = Enum.Font.GothamBold
+warningLabel.TextScaled = true
+warningLabel.TextWrapped = true
+warningLabel.Text = "⚠️ WARNING: 'Emergency Server Hop' button is only for use if the script breaks. Sorry for the inconvenience."
+local warningCorner = Instance.new("UICorner", warningLabel)
+warningCorner.CornerRadius = UDim.new(0, 12)
+
+-- Fade out the warning label
+spawn(function()
+    wait(8)
+    for i = 1, 20 do
+        warningLabel.TextTransparency = i * 0.05
+        warningLabel.BackgroundTransparency = 0.7 + (i * 0.03)
+        wait(0.1)
+    end
+    warningLabel:Destroy()
+end)
+
+-- Main loop for fruit finding, collecting, and server hopping
 while true do
     local fruits = {}
     for _, model in pairs(Workspace:GetDescendants()) do
@@ -301,3 +346,4 @@ while true do
     end
     wait(0.8)
 end
+
