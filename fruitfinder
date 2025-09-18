@@ -1,10 +1,11 @@
--- Services
+-- Servicess
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 local Debris = game:GetService("Debris")
 
 local LocalPlayer = Players.LocalPlayer
@@ -24,39 +25,35 @@ local function ReadSettings()
 end
 Settings = ReadSettings()
 
--- GUI
+-- Fancy GUI
 local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
 
--- Draggable Rounded Main GUI
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 450, 0, 220)
-MainFrame.Position = UDim2.new(0.5, -225, 0.75, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25,25,35)
-MainFrame.BorderSizePixel = 0
+MainFrame.Size = UDim2.new(0, 480, 0, 250)
+MainFrame.Position = UDim2.new(0.5, -240, 0.7, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 MainFrame.ClipsDescendants = true
-MainFrame.AnchorPoint = Vector2.new(0.5,0.5)
 MainFrame.Active = true
 MainFrame.Draggable = true
 local UICorner = Instance.new("UICorner", MainFrame)
-UICorner.CornerRadius = UDim.new(0,25)
+UICorner.CornerRadius = UDim.new(0,30)
 
--- Gradient Header
+-- Header
 local Header = Instance.new("Frame", MainFrame)
 Header.Size = UDim2.new(1,0,0,60)
-Header.Position = UDim2.new(0,0,0,0)
-Header.BackgroundColor3 = Color3.fromRGB(60,30,90)
+Header.BackgroundColor3 = Color3.fromRGB(60,0,100)
 local HeaderCorner = Instance.new("UICorner", Header)
-HeaderCorner.CornerRadius = UDim.new(0,25)
+HeaderCorner.CornerRadius = UDim.new(0,30)
 
 local HeaderLabel = Instance.new("TextLabel", Header)
 HeaderLabel.Size = UDim2.new(1,0,1,0)
 HeaderLabel.BackgroundTransparency = 1
-HeaderLabel.Text = ""
 HeaderLabel.Font = Enum.Font.GothamBold
-HeaderLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+HeaderLabel.TextColor3 = Color3.fromRGB(255,215,0)
 HeaderLabel.TextScaled = true
+HeaderLabel.Text = ""
 
--- Typewriter rainbow banner
+-- Typewriter rainbow header
 local bannerText = "✨ Premium Script: Fruit Finder | Made by Young ✨"
 spawn(function()
     while true do
@@ -73,11 +70,11 @@ end)
 
 -- Status Box
 local StatusFrame = Instance.new("Frame", MainFrame)
-StatusFrame.Size = UDim2.new(0.95,0,0.35,0)
-StatusFrame.Position = UDim2.new(0.025,0,0.3,0)
-StatusFrame.BackgroundColor3 = Color3.fromRGB(35,35,50)
+StatusFrame.Size = UDim2.new(0.95,0,0.3,0)
+StatusFrame.Position = UDim2.new(0.025,0,0.25,0)
+StatusFrame.BackgroundColor3 = Color3.fromRGB(35,35,55)
 local StatusCorner = Instance.new("UICorner", StatusFrame)
-StatusCorner.CornerRadius = UDim.new(0,15)
+StatusCorner.CornerRadius = UDim.new(0,20)
 
 local StatusLabel = Instance.new("TextLabel", StatusFrame)
 StatusLabel.Size = UDim2.new(1,0,1,0)
@@ -90,10 +87,10 @@ StatusLabel.Text = "Status: Searching..."
 -- Fruits Collected Box
 local FruitFrame = Instance.new("Frame", MainFrame)
 FruitFrame.Size = UDim2.new(0.95,0,0.15,0)
-FruitFrame.Position = UDim2.new(0.025,0,0.67,0)
-FruitFrame.BackgroundColor3 = Color3.fromRGB(40,40,60)
+FruitFrame.Position = UDim2.new(0.025,0,0.6,0)
+FruitFrame.BackgroundColor3 = Color3.fromRGB(45,45,70)
 local FruitCorner = Instance.new("UICorner", FruitFrame)
-FruitCorner.CornerRadius = UDim.new(0,15)
+FruitCorner.CornerRadius = UDim.new(0,20)
 
 local FruitCountLabel = Instance.new("TextLabel", FruitFrame)
 FruitCountLabel.Size = UDim2.new(1,0,1,0)
@@ -103,7 +100,7 @@ FruitCountLabel.TextColor3 = Color3.fromRGB(0,255,128)
 FruitCountLabel.TextScaled = true
 FruitCountLabel.Text = "Fruits Collected: 0"
 
--- Premium Notification Function
+-- Premium Notification
 local function Notify(title,text,duration)
     duration = duration or 4
     local notif = Instance.new("Frame",ScreenGui)
@@ -111,7 +108,6 @@ local function Notify(title,text,duration)
     notif.Position = UDim2.new(0.5,-200,0.1,0)
     notif.BackgroundColor3 = Color3.fromRGB(20,20,30)
     notif.AnchorPoint = Vector2.new(0.5,0)
-    notif.ClipsDescendants = true
     local corner = Instance.new("UICorner",notif)
     corner.CornerRadius = UDim.new(0,15)
 
@@ -141,7 +137,7 @@ local function Notify(title,text,duration)
     end)
 end
 
--- Fruit ESP with animation
+-- Fruit ESP with pulsing
 local function AddESP(fruit)
     if not fruit.PrimaryPart then return end
     local bgui = Instance.new("BillboardGui",fruit)
@@ -170,43 +166,43 @@ local function AddESP(fruit)
     end)
 end
 
--- Server Hop with 5-sec countdown
+-- Server hop using Roblox API
+local function ListServers(cursor)
+    local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+    if cursor then url = url .. "&cursor=" .. cursor end
+    local response = game:HttpGet(url)
+    return HttpService:JSONDecode(response)
+end
+
 local function HopServer()
+    -- 5-second countdown
     for i=5,1,-1 do
-        StatusLabel.Text="Status: No Fruits or Collected! Server Hop in "..i.."s"
+        StatusLabel.Text="Status: Server hop in "..i.."s"
         task.wait(1)
     end
     Notify("Premium Script","Server Hopping Now!","3")
-    local visitedServers={}
-    local function Hop()
-        local page=1
-        while true do
-            local serverlist=ReplicatedStorage.__ServerBrowser:InvokeServer(page)
-            if not serverlist or next(serverlist)==nil then break end
-            for jobId,info in pairs(serverlist) do
-                if jobId~=game.JobId and info.Count<11 then
-                    local lastVisit=(Settings[jobId] and Settings[jobId].Time) or 0
-                    if tick()-lastVisit>60*60 and not visitedServers[jobId] then
-                        visitedServers[jobId]=true
-                        Settings[jobId]={Time=tick()}
-                        SaveSettings()
-                        ReplicatedStorage.__ServerBrowser:InvokeServer("teleport",jobId)
-                        return true
-                    end
-                end
+
+    local NextCursor = nil
+    local targetServer = nil
+    repeat
+        local serversData = ListServers(NextCursor)
+        NextCursor = serversData.nextPageCursor
+        for _, srv in pairs(serversData.data) do
+            if srv.playing < srv.maxPlayers and srv.id ~= game.JobId then
+                targetServer = srv
+                break
             end
-            page=page+1
         end
-        return false
-    end
-    while not Hop() do task.wait(1) end
+    until targetServer
+
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, targetServer.id, LocalPlayer)
 end
 
 -- Main Loop
-local fruitsCollected=0
+local fruitsCollected = 0
 while true do
-    local fruits={}
-    for _,model in pairs(Workspace:GetDescendants()) do
+    local fruits = {}
+    for _, model in pairs(Workspace:GetDescendants()) do
         if model:IsA("Model") and model.Name:find("Fruit") then
             table.insert(fruits,model)
             AddESP(model)
@@ -216,7 +212,7 @@ while true do
     if #fruits==0 then
         HopServer()
     else
-        for _,fruit in pairs(fruits) do
+        for _, fruit in pairs(fruits) do
             if fruit.PrimaryPart then
                 StatusLabel.Text="Status: Fruit Found! Moving..."
                 HumanoidRootPart.CFrame = CFrame.new(fruit.PrimaryPart.Position + Vector3.new(0,3,0))
@@ -226,7 +222,7 @@ while true do
                         ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", tool:GetAttribute("OriginalName"), tool)
                     end)
                     if success then
-                        fruitsCollected=fruitsCollected+1
+                        fruitsCollected = fruitsCollected + 1
                         FruitCountLabel.Text="Fruits Collected: "..fruitsCollected
                         Notify("Premium Script","Fruit Collected! Made by Young",3)
                     else
