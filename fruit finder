@@ -1,41 +1,31 @@
--- Services
-local HttpService = game:GetService("HttpService")
-local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- chris travis
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
-local Notification = require(ReplicatedStorage.Notification)
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- Settings
 local SaveFileName = "FruitFinderLaDev.json"
 local Settings = {}
 
--- BodyVelocity & BodyAngularVelocity templates
-local bv = Instance.new("BodyVelocity")
-bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-bv.Velocity = Vector3.new()
-bv.Name = "bV"
-
-local bav = Instance.new("BodyAngularVelocity")
-bav.AngularVelocity = Vector3.new()
-bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-bav.Name = "bAV"
-
--- Save settings to file
+-- Save/Load settings
 local function SaveSettings()
     writefile(SaveFileName, HttpService:JSONEncode(Settings))
 end
 
--- Read settings from file
 local function ReadSettings()
     if not pcall(function() readfile(SaveFileName) end) then
         SaveSettings()
     end
-
     local success, result = pcall(function()
         return HttpService:JSONDecode(readfile(SaveFileName))
     end)
-
     if success and type(result) == "table" then
         return result
     else
@@ -46,145 +36,242 @@ end
 
 Settings = ReadSettings()
 
--- Optimized Server Hopping
-local function HopServer()
-    local visitedServers = {} -- session cache
+-- Tween Movement Function (follows target)
+local function TweenToTarget(targetPart, speed)
+    speed = speed or 2
+    local connection
+    connection = RunService.RenderStepped:Connect(function()
+        if not targetPart or not targetPart.Parent then
+            connection:Disconnect()
+            return
+        end
+        local direction = (targetPart.Position - HumanoidRootPart.Position)
+        HumanoidRootPart.CFrame = HumanoidRootPart.CFrame:Lerp(
+            CFrame.new(HumanoidRootPart.Position + direction), 0.1*speed)
+    end)
+end
 
+-- Notification Function
+local function Notify(title, text, duration)
+    duration = duration or 5
+    local notif = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+    local frame = Instance.new("Frame", notif)
+    frame.Size = UDim2.new(0, 300, 0, 60)
+    frame.Position = UDim2.new(0.5, -150, 0.1, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.BackgroundTransparency = 0.2
+    frame.AnchorPoint = Vector2.new(0.5, 0)
+    frame.ClipsDescendants = true
+    local titleLabel = Instance.new("TextLabel", frame)
+    titleLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextScaled = true
+    local textLabel = Instance.new("TextLabel", frame)
+    textLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    textLabel.Position = UDim2.new(0,0,0.5,0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = text
+    textLabel.TextColor3 = Color3.fromRGB(255,255,255)
+    textLabel.Font = Enum.Font.Gotham
+    textLabel.TextScaled = true
+
+    frame.Position = UDim2.new(0.5, -150, 0, -100)
+    for i = 0, 1, 0.05 do
+        frame.Position = UDim2.new(0.5, -150, 0.1*i + -0.1*(1-i), 0)
+        RunService.RenderStepped:Wait()
+    end
+
+    task.delay(duration, function()
+        frame:Destroy()
+    end)
+end
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+
+-- Premium Typewriter Banner
+local BannerFrame = Instance.new("Frame", ScreenGui)
+BannerFrame.Size = UDim2.new(0, 400, 0, 50)
+BannerFrame.Position = UDim2.new(0.5, -200, 0.02, 0)
+BannerFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+BannerFrame.BorderSizePixel = 0
+BannerFrame.BackgroundTransparency = 0.2
+BannerFrame.AnchorPoint = Vector2.new(0.5, 0)
+
+local BannerLabel = Instance.new("TextLabel", BannerFrame)
+BannerLabel.Size = UDim2.new(1,0,1,0)
+BannerLabel.BackgroundTransparency = 1
+BannerLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+BannerLabel.Font = Enum.Font.GothamBold
+BannerLabel.TextScaled = true
+BannerLabel.Text = ""
+
+local bannerText = "✨ Premium Script: Fruit Finder | Made by Young ✨"
+spawn(function()
+    while true do
+        BannerLabel.Text = ""
+        for i = 1, #bannerText do
+            BannerLabel.Text = string.sub(bannerText, 1, i)
+            local t = (math.sin(tick()*3)+1)/2
+            BannerLabel.TextColor3 = Color3.fromHSV(t, 1, 1)
+            RunService.RenderStepped:Wait()
+        end
+        task.wait(2)
+    end
+end)
+
+-- Main Status GUI
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 300, 0, 120)
+MainFrame.Position = UDim2.new(0.02, 0, 0.8, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderSizePixel = 0
+MainFrame.BackgroundTransparency = 0.1
+
+local StatusLabel = Instance.new("TextLabel", MainFrame)
+StatusLabel.Size = UDim2.new(1, 0, 0.5, 0)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatusLabel.Font = Enum.Font.GothamBold
+StatusLabel.TextScaled = true
+StatusLabel.Text = "Status: Searching..."
+
+local FruitCountLabel = Instance.new("TextLabel", MainFrame)
+FruitCountLabel.Size = UDim2.new(1,0,0.5,0)
+FruitCountLabel.Position = UDim2.new(0,0,0.5,0)
+FruitCountLabel.BackgroundTransparency = 1
+FruitCountLabel.TextColor3 = Color3.fromRGB(0, 255, 128)
+FruitCountLabel.Font = Enum.Font.Gotham
+FruitCountLabel.TextScaled = true
+FruitCountLabel.Text = "Fruits Collected: 0"
+
+-- Premium Fruit ESP
+local function AddESP(fruit)
+    local bgui = Instance.new("BillboardGui", fruit)
+    bgui.AlwaysOnTop = true
+    bgui.Size = UDim2.new(0, 150, 0, 50)
+    bgui.StudsOffset = Vector3.new(0,3,0)
+    
+    local label = Instance.new("TextLabel", bgui)
+    label.Size = UDim2.new(1,0,1,0)
+    label.BackgroundTransparency = 1
+    label.Text = fruit.Name
+    label.TextColor3 = Color3.fromRGB(255,0,0)
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+
+    local circle = Instance.new("BillboardGui", fruit)
+    circle.AlwaysOnTop = true
+    circle.Size = UDim2.new(0, 50, 0, 50)
+    circle.StudsOffset = Vector3.new(0,2,0)
+    local frame = Instance.new("Frame", circle)
+    frame.Size = UDim2.new(1,0,1,0)
+    frame.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+    frame.BorderSizePixel = 0
+    frame.AnchorPoint = Vector2.new(0.5,0.5)
+    frame.Position = UDim2.new(0.5,0,0.5,0)
+    frame.BackgroundTransparency = 0.6
+
+    local arrow = Instance.new("BillboardGui", fruit)
+    arrow.AlwaysOnTop = true
+    arrow.Size = UDim2.new(0, 30, 0, 30)
+    arrow.StudsOffset = Vector3.new(0,5,0)
+    local arrowLabel = Instance.new("TextLabel", arrow)
+    arrowLabel.Size = UDim2.new(1,0,1,0)
+    arrowLabel.BackgroundTransparency = 1
+    arrowLabel.Text = "⬇"
+    arrowLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+    arrowLabel.TextScaled = true
+    arrowLabel.Font = Enum.Font.GothamBold
+
+    spawn(function()
+        local direction = 1
+        local scale = 1
+        while fruit.Parent do
+            local t = (math.sin(tick()*3)+1)/2
+            label.TextColor3 = Color3.fromHSV(t,1,1)
+            arrowLabel.TextColor3 = Color3.fromHSV(1-t,1,1)
+            scale = scale + 0.02*direction
+            if scale > 1.3 then direction = -1 end
+            if scale < 0.8 then direction = 1 end
+            frame.Size = UDim2.new(0, 50*scale, 0, 50*scale)
+            RunService.RenderStepped:Wait()
+        end
+        bgui:Destroy()
+        circle:Destroy()
+        arrow:Destroy()
+    end)
+end
+
+-- Server Hop
+local function HopServer()
+    Notify("Premium Script", "Server Hoping...", 3)
+    local visitedServers = {}
     local function Hop()
         local page = 1
         while true do
             local serverlist = ReplicatedStorage.__ServerBrowser:InvokeServer(page)
-            if not serverlist or next(serverlist) == nil then
-                break
-            end
-
+            if not serverlist or next(serverlist) == nil then break end
             for jobId, info in pairs(serverlist) do
                 if jobId ~= game.JobId and info.Count < 11 then
                     local lastVisit = (Settings[jobId] and Settings[jobId].Time) or 0
-                    if tick() - lastVisit > 60 * 60 and not visitedServers[jobId] then
-                        visitedServers[jobId] = true
-                        Settings[jobId] = {Time = tick()}
+                    if tick()-lastVisit>60*60 and not visitedServers[jobId] then
+                        visitedServers[jobId]=true
+                        Settings[jobId]={Time=tick()}
                         SaveSettings()
                         ReplicatedStorage.__ServerBrowser:InvokeServer("teleport", jobId)
                         return true
                     end
                 end
             end
-
-            page = page + 1
+            page=page+1
         end
         return false
     end
+    while not Hop() do task.wait(1) end
+end
 
-    -- Retry teleport on failure
-    if not getgenv().Loaded then
-        local function onChildAdded(childInstance)
-            if childInstance.Name == "ErrorPrompt" then
-                local function checkFail()
-                    if childInstance.Visible and childInstance.TitleFrame.ErrorTitle.Text == "Teleport Failed" then
+-- Main Loop
+local fruitsCollected = 0
+while true do
+    local fruits = {}
+    for _, model in pairs(Workspace:GetDescendants()) do
+        if model:IsA("Model") and model.Name:find("Fruit") then
+            table.insert(fruits, model)
+            if not model:FindFirstChild("ESP") then
+                AddESP(model)
+            end
+        end
+    end
+
+    if #fruits == 0 then
+        StatusLabel.Text = "Status: No Fruits, Server Hop"
+        HopServer()
+    else
+        for _, fruit in pairs(fruits) do
+            if fruit.PrimaryPart then
+                StatusLabel.Text = "Status: Fruit Found! Moving..."
+                TweenToTarget(fruit.PrimaryPart, 1.5)
+                -- Attempt to collect
+                local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool") or LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
+                if tool and tool.Name:find("Fruit") then
+                    local success, err = pcall(function()
+                        ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", tool:GetAttribute("OriginalName"), tool)
+                    end)
+                    if success then
+                        fruitsCollected = fruitsCollected + 1
+                        FruitCountLabel.Text = "Fruits Collected: "..fruitsCollected
+                        Notify("Premium Script", "Fruit Collected! Made by Young", 3)
+                    else
+                        Notify("Premium Script", "Cannot Store Fruit! Server Hop", 3)
                         HopServer()
                     end
                 end
-                checkFail()
-                childInstance:GetPropertyChangedSignal("Visible"):Connect(checkFail)
             end
         end
-
-        for _, v in pairs(game.CoreGui.RobloxPromptGui.promptOverlay:GetChildren()) do
-            onChildAdded(v)
-        end
-        game.CoreGui.RobloxPromptGui.promptOverlay.ChildAdded:Connect(onChildAdded)
-        getgenv().Loaded = true
     end
-
-    while not Hop() do
-        task.wait(1)
-    end
-    SaveSettings()
-end
-
--- Wait for game to fully load
-repeat task.wait() until game:IsLoaded() and Players.LocalPlayer:FindFirstChild("PlayerGui") and Players.LocalPlayer.PlayerGui:FindFirstChild("Main")
-
-Notification.new("Check !!"):Display()
-task.wait(0.5)
-getgenv().Ran = true
-
--- Display fruit names above them
-if getgenv().Ran then
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("TouchTransmitter") and v.Parent.Name == "Handle" then
-            local BillboardGui = Instance.new("BillboardGui")
-            local TextLabel = Instance.new("TextLabel")
-
-            BillboardGui.AlwaysOnTop = true
-            BillboardGui.Size = UDim2.new(0, 60, 0, 60)
-            BillboardGui.StudsOffset = Vector3.new(0, 2, 0)
-            BillboardGui.Parent = v.Parent
-
-            TextLabel.Parent = BillboardGui
-            TextLabel.BackgroundTransparency = 1
-            TextLabel.Size = UDim2.new(1, 0, 1, 0)
-            TextLabel.Text = v.Parent.Parent.Name
-            TextLabel.TextColor3 = Color3.new(1, 0, 0)
-            TextLabel.TextScaled = true
-        end
-    end
-
-    task.wait(0.5)
-
-    local mainGui = Players.LocalPlayer.PlayerGui.Main
-    if mainGui:FindFirstChild("ChooseTeam") then
-        local buttons = mainGui.ChooseTeam.Container.Pirates.Frame.ViewportFrame:GetChildren()
-        for _, btn in pairs(buttons) do
-            if btn:IsA("TextButton") then
-                for _, event in pairs(getconnections(btn.Activated)) do
-                    event.Function()
-                end
-            end
-        end
-
-        local function notify(title, text)
-            game.StarterGui:SetCore("SendNotification", {
-                Title = title;
-                Text = text;
-                Duration = 5;
-            })
-        end
-
-        notify("---[WELCOME FROM YOUNG YOUR FAVORITE SCRIPTER 🤙---", Players.LocalPlayer.DisplayName)
-        task.wait(0.5)
-        notify("---[CREATOR]---", "Made By young")
-        task.wait(0.5)
-        notify("---[SOCIAL MEDIA]---", "LA Hub Team Discord\nhttps://discord.gg/J6ukvmpv3p")
-    end
-end
-
-repeat task.wait(0.1) until Workspace.Characters:FindFirstChild(Players.LocalPlayer.Name)
-
--- Main loop
-while true do
-    local model = Workspace:FindFirstChild("Fruit")
-    if not model or not model:IsA("Model") then
-        Notification.new("Wait Hop Server!!"):Display()
-        HopServer()
-    else
-        local chr = Players.LocalPlayer.Character
-        local fruit = chr:FindFirstChildOfClass("Tool")
-        if not fruit or not fruit.Name:find("Fruit") then
-            for _, fr in pairs(Players.LocalPlayer.Backpack:GetChildren()) do
-                if fr.Name:find("Fruit") then
-                    fruit = fr
-                    break
-                end
-            end
-        end
-
-        if fruit then
-            ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", fruit:GetAttribute("OriginalName"), fruit)
-            task.wait(0.5)
-        end
-
-        HopServer()
-    end
+    task.wait(1)
 end
