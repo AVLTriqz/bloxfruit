@@ -1,4 +1,4 @@
---// Services
+-- niggers
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -12,58 +12,60 @@ local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
---// UI Blur Effect for depth
+-- Add blur effect for UI depth
 local blur = Instance.new("BlurEffect", Lighting)
 blur.Size = 8
 
---// Utility: Safe WaitForChild Chain
-local function WaitForHierarchy(root, ...)
+-- Utility: wait for deep child safely
+local function SafeWaitFor(root, ...)
     local current = root
     for i = 1, select("#", ...) do
-        local childName = select(i, ...)
-        current = current:WaitForChild(childName)
+        current = current:WaitForChild(select(i, ...))
     end
     return current
 end
 
--- Use safe wait-for-child chain for deep objects to prevent nil indices
-local MapServices
-local ArenaComponentClient
-local ArenaFishComponent
-
--- Attempt to wait and assign securely
+-- Initialize critical components with error handling
 local function InitComponents()
-    MapServices = WaitForHierarchy(ReplicatedStorage, "Controllers", "MapServices")
-    ArenaComponentClient = MapServices:WaitForChild("ArenaComponentClient")
-    ArenaFishComponent = ArenaComponentClient:WaitForChild("ArenaFishComponent")
+    local controllers = SafeWaitFor(ReplicatedStorage, "Controllers")
+    local mapServices = controllers:WaitForChild("MapServices")
+    local arenaComponentClient = mapServices:WaitForChild("ArenaComponentClient")
+    local arenaFishComponent = arenaComponentClient:WaitForChild("ArenaFishComponent")
+    return controllers, mapServices, arenaComponentClient, arenaFishComponent
 end
 
--- Initialize components in a protected call
-local success, err = pcall(InitComponents)
+local Controllers, MapServices, ArenaComponentClient, ArenaFishComponent
+
+local success, err = pcall(function()
+    Controllers, MapServices, ArenaComponentClient, ArenaFishComponent = InitComponents()
+end)
+
 if not success then
-    warn("Failed to setup MapServices hierarchy:", err)
-    -- Proceed but warn
+    warn("Failed to initialize components: ", err)
+    -- Depending on needs, could retry or continue with warnings
 end
 
---// Utility: Create fancy frame with glass effect and shadow
-local function FancyFrame(parent, size, pos, color, cornerRadius)
-    local frame = Instance.new("Frame", parent)
+-- Utility: fancy GUI frame creator for polished look
+local function CreateFrame(parent, size, pos, color, cornerRadius)
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
     frame.Size = size
     frame.Position = pos
     frame.BackgroundColor3 = color
     frame.BackgroundTransparency = 0.16
-    local corner = Instance.new("UICorner", frame)
+    frame.ZIndex = 10
+    local corner = Instance.new("UICorner")
     corner.CornerRadius = cornerRadius or UDim.new(0, 20)
-    local gradient = Instance.new("UIGradient", frame)
-    gradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(128, 0, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(32, 32, 50))
-    }
+    corner.Parent = frame
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(128,0,255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(32,32,50))})
     gradient.Rotation = 40
-    local shadow = Instance.new("ImageLabel", frame)
-    shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-    shadow.Position = UDim2.new(0.5, 0, 0.5, 7)
-    shadow.Size = UDim2.new(1.13, 0, 1.14, 5)
+    gradient.Parent = frame
+    local shadow = Instance.new("ImageLabel")
+    shadow.Parent = frame
+    shadow.AnchorPoint = Vector2.new(0.5,0.5)
+    shadow.Position = UDim2.new(0.5,0,0.5,7)
+    shadow.Size = UDim2.new(1.13,0,1.14,5)
     shadow.BackgroundTransparency = 1
     shadow.Image = "rbxassetid://6015897843"
     shadow.ImageTransparency = 0.72
@@ -71,118 +73,131 @@ local function FancyFrame(parent, size, pos, color, cornerRadius)
     return frame
 end
 
---// Main GUI
+-- Create main UI
 local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
 ScreenGui.IgnoreGuiInset = true
 
-local MainFrame = FancyFrame(ScreenGui, UDim2.new(0, 350, 0, 190), UDim2.new(0.85, -180, 0.86, 0), Color3.fromRGB(30, 20, 40), UDim.new(0, 22))
+local MainFrame = CreateFrame(ScreenGui, UDim2.new(0, 350, 0, 190), UDim2.new(0.85, -175, 0.86, 0), Color3.fromRGB(30,20,40), UDim.new(0,22))
 MainFrame.Active = true
 MainFrame.Draggable = true
 
--- Header with animated rainbow text
-local Header = FancyFrame(MainFrame, UDim2.new(1, 0, 0, 38), UDim2.new(0, 0, 0, 0), Color3.fromRGB(102, 0, 204), UDim.new(0, 22))
+-- Header: animated rainbow "Fruit Finder"
+local Header = CreateFrame(MainFrame, UDim2.new(1,0,0,38), UDim2.new(0,0,0,0), Color3.fromRGB(102,0,204), UDim.new(0,22))
 Header.BackgroundTransparency = 0.2
-local HeaderLabel = Instance.new("TextLabel", Header)
-HeaderLabel.Size = UDim2.new(1, 0, 1, 0)
+
+local HeaderLabel = Instance.new("TextLabel")
+HeaderLabel.Parent = Header
+HeaderLabel.Size = UDim2.new(1,0,1,0)
 HeaderLabel.BackgroundTransparency = 1
 HeaderLabel.Font = Enum.Font.GothamBlack
 HeaderLabel.TextScaled = true
 HeaderLabel.TextStrokeTransparency = 0.74
 HeaderLabel.Text = ""
+HeaderLabel.ZIndex = 15
+
 local bannerText = "🍉 Fruit Finder: Ultimate Edition 🍉"
+
 spawn(function()
     while true do
         for i = 1, #bannerText do
-            HeaderLabel.Text = string.sub(bannerText, 1, i)
-            local t = math.abs(math.sin(tick() * 2 + i * 0.09))
-            HeaderLabel.TextColor3 = Color3.fromHSV(t, 0.82, 1)
-            HeaderLabel.TextStrokeTransparency = 0.77 - 0.11 * t
+            HeaderLabel.Text = string.sub(bannerText,1,i)
+            local t = math.abs(math.sin(tick()*2 + i*0.09))
+            HeaderLabel.TextColor3 = Color3.fromHSV(t,0.82,1)
+            HeaderLabel.TextStrokeTransparency = 0.77 - 0.11*t
             RunService.RenderStepped:Wait()
         end
         wait(0.7)
         for i = #bannerText, 1, -3 do
-            HeaderLabel.Text = string.sub(bannerText, 1, i)
+            HeaderLabel.Text = string.sub(bannerText,1,i)
             RunService.RenderStepped:Wait()
         end
         HeaderLabel.Text = ""
         wait(0.3)
     end
 end)
--- Shimmer ribbon below header
+
 local Ribbon = Instance.new("Frame", Header)
-Ribbon.Size = UDim2.new(1, 0, 0, 6)
-Ribbon.Position = UDim2.new(0, 0, 1, -4)
-Ribbon.BackgroundColor3 = Color3.fromRGB(255, 255, 160)
+Ribbon.Size = UDim2.new(1,0,0,6)
+Ribbon.Position = UDim2.new(0,0,1,-4)
+Ribbon.BackgroundColor3 = Color3.fromRGB(255,255,160)
 Ribbon.BackgroundTransparency = 0.5
-local RibbonCorner = Instance.new("UICorner", Ribbon)
-RibbonCorner.CornerRadius = UDim.new(0, 3)
+local ribbonCorner = Instance.new("UICorner", Ribbon)
+ribbonCorner.CornerRadius = UDim.new(0,3)
+
 spawn(function()
     while true do
-        local s = 0.57 + math.sin(tick() * 4) * 0.07
-        Ribbon.Size = UDim2.new(s, 0, 0, 6)
-        Ribbon.BackgroundTransparency = 0.45 + math.abs(math.cos(tick() * 12)) * 0.14
+        local s = 0.57 + math.sin(tick()*4)*0.07
+        Ribbon.Size = UDim2.new(s,0,0,6)
+        Ribbon.BackgroundTransparency = 0.45 + math.abs(math.cos(tick()*12))*0.14
         RunService.RenderStepped:Wait()
     end
 end)
 
--- Status Frame
-local StatusFrame = FancyFrame(MainFrame, UDim2.new(0.93, 0, 0.34, 0), UDim2.new(0.035, 0, 0.235, 0), Color3.fromRGB(45, 35, 70), UDim.new(0, 14))
-local StatusLabel = Instance.new("TextLabel", StatusFrame)
-StatusLabel.Size = UDim2.new(1, 0, 1, 0)
+-- Status label
+local StatusFrame = CreateFrame(MainFrame, UDim2.new(0.93,0,0.34,0), UDim2.new(0.035,0,0.235,0), Color3.fromRGB(45,35,70), UDim.new(0,14))
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Parent = StatusFrame
+StatusLabel.Size = UDim2.new(1,0,1,0)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Font = Enum.Font.GothamBlack
 StatusLabel.TextScaled = true
 StatusLabel.TextStrokeTransparency = 0.7
-StatusLabel.TextStrokeColor3 = Color3.fromRGB(128, 192, 190)
-StatusLabel.TextColor3 = Color3.fromRGB(220, 255, 210)
+StatusLabel.TextStrokeColor3 = Color3.fromRGB(128,192,190)
+StatusLabel.TextColor3 = Color3.fromRGB(220,255,210)
 StatusLabel.Text = "Status: Searching..."
 
--- Fruit Count Frame
-local FruitFrame = FancyFrame(MainFrame, UDim2.new(0.93, 0, 0.19, 0), UDim2.new(0.035, 0, 0.63, 0), Color3.fromRGB(60, 30, 80), UDim.new(0, 14))
-local FruitCountLabel = Instance.new("TextLabel", FruitFrame)
-FruitCountLabel.Size = UDim2.new(1, 0, 1, 0)
+-- Fruit count label
+local FruitFrame = CreateFrame(MainFrame, UDim2.new(0.93,0,0.19,0), UDim2.new(0.035,0,0.63,0), Color3.fromRGB(60,30,80), UDim.new(0,14))
+local FruitCountLabel = Instance.new("TextLabel")
+FruitCountLabel.Parent = FruitFrame
+FruitCountLabel.Size = UDim2.new(1,0,1,0)
 FruitCountLabel.BackgroundTransparency = 1
 FruitCountLabel.Font = Enum.Font.GothamBold
-FruitCountLabel.TextColor3 = Color3.fromRGB(0, 255, 140)
+FruitCountLabel.TextColor3 = Color3.fromRGB(0,255,140)
 FruitCountLabel.TextStrokeTransparency = 0.45
 FruitCountLabel.TextScaled = true
 FruitCountLabel.Text = "Fruits Collected: 0"
+
 spawn(function()
     while true do
-        local p = 0.62 + math.abs(math.sin(tick() * 3)) * 0.18
-        FruitFrame.BackgroundTransparency = 0.10 + 0.08 * p
-        FruitCountLabel.TextColor3 = Color3.fromHSV(0.34 + math.sin(tick()) * 0.13, 0.9, 1)
+        local p = 0.62 + math.abs(math.sin(tick()*3))*0.18
+        FruitFrame.BackgroundTransparency = 0.10 + 0.08*p
+        FruitCountLabel.TextColor3 = Color3.fromHSV(0.34 + math.sin(tick())*0.13, 0.9, 1)
         RunService.RenderStepped:Wait()
     end
 end)
 
--- Notification System
+-- Notification system
 local function Notify(title, text, duration)
     duration = duration or 4
-    local notif = FancyFrame(ScreenGui, UDim2.new(0, 256, 0, 43), UDim2.new(0.86, -120, 0.07, -3), Color3.fromRGB(30, 30, 45), UDim.new(0, 13))
-    notif.AnchorPoint = Vector2.new(0.5, 0)
+    local notif = CreateFrame(ScreenGui, UDim2.new(0,256,0,43), UDim2.new(0.86,-120,0.07,-3), Color3.fromRGB(30,30,45), UDim.new(0,13))
+    notif.AnchorPoint = Vector2.new(0.5,0)
     notif.ZIndex = 35
+
     local titleLabel = Instance.new("TextLabel", notif)
-    titleLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    titleLabel.Size = UDim2.new(1,0,0.5,0)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Font = Enum.Font.GothamBlack
-    titleLabel.TextColor3 = Color3.fromRGB(255, 235, 80)
+    titleLabel.TextColor3 = Color3.fromRGB(255,235,80)
     titleLabel.TextStrokeTransparency = 0.7
     titleLabel.Text = title
     titleLabel.TextScaled = true
+
     local textLabel = Instance.new("TextLabel", notif)
-    textLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    textLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    textLabel.Size = UDim2.new(1,0,0.5,0)
+    textLabel.Position = UDim2.new(0,0,0.5,0)
     textLabel.BackgroundTransparency = 1
     textLabel.Font = Enum.Font.Gotham
-    textLabel.TextColor3 = Color3.fromRGB(250, 255, 255)
+    textLabel.TextColor3 = Color3.fromRGB(250,255,255)
     textLabel.TextStrokeTransparency = 0.75
     textLabel.Text = text
     textLabel.TextScaled = true
+
     local edge = Instance.new("UIStroke", notif)
     edge.Thickness = 1.75
-    edge.Color = Color3.fromRGB(128, 196, 180)
+    edge.Color = Color3.fromRGB(128,196,180)
     edge.Transparency = 0.33
+
     spawn(function()
         local tweenIn = TweenService:Create(notif, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.86, -120, 0.09, 0)})
         tweenIn:Play()
@@ -195,36 +210,37 @@ local function Notify(title, text, duration)
     end)
 end
 
--- Fruit ESP with pulsing rainbow text
+-- Fruit ESP with pulsing rainbow color
 local function AddESP(fruit)
     if not fruit or not fruit.PrimaryPart then return end
     local bgui = Instance.new("BillboardGui", fruit)
     bgui.AlwaysOnTop = true
-    bgui.Size = UDim2.new(0, 84, 0, 28)
-    bgui.StudsOffset = Vector3.new(0, 3, 0)
+    bgui.Size = UDim2.new(0,84,0,28)
+    bgui.StudsOffset = Vector3.new(0,3,0)
     local label = Instance.new("TextLabel", bgui)
-    label.Size = UDim2.new(1, 0, 1, 0)
+    label.Size = UDim2.new(1,0,1,0)
     label.BackgroundTransparency = 1
     label.Text = "🍒 " .. fruit.Name .. " 🍒"
     label.Font = Enum.Font.GothamBlack
-    label.TextColor3 = Color3.fromHSV(math.random(), 0.94, 1)
+    label.TextColor3 = Color3.fromHSV(math.random(),0.94,1)
     label.TextStrokeTransparency = 0.45
-    label.TextStrokeColor3 = Color3.fromRGB(255, 0, 128)
+    label.TextStrokeColor3 = Color3.fromRGB(255,0,128)
     label.TextScaled = true
+
     spawn(function()
         while fruit and fruit.Parent and fruit.PrimaryPart do
             local t = tick()
-            label.TextColor3 = Color3.fromHSV(math.abs(math.sin(t * 3.5)), 0.96, 1)
-            label.TextStrokeTransparency = 0.37 + 0.21 * math.sin(t * 2.1)
-            label.Position = UDim2.new(0, 0, 0.04 + 0.03 * math.cos(t * 1.1), 0)
-            label.TextSize = 14 + 4 * math.abs(math.sin(t * 2.2))
+            label.TextColor3 = Color3.fromHSV(math.abs(math.sin(t*3.5)), 0.96, 1)
+            label.TextStrokeTransparency = 0.37 + 0.21*math.sin(t*2.1)
+            label.Position = UDim2.new(0,0,0.04 + 0.03*math.cos(t*1.1), 0)
+            label.TextSize = 14 + 4*math.abs(math.sin(t*2.2))
             RunService.RenderStepped:Wait()
         end
         bgui:Destroy()
     end)
 end
 
--- Server list function
+-- Server list fetching
 local function ListServers(cursor)
     local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=50"
     if cursor then url = url .. "&cursor=" .. cursor end
@@ -232,19 +248,17 @@ local function ListServers(cursor)
     return HttpService:JSONDecode(response)
 end
 
--- Emergency Server Hop fallback
-local function EmergencyServerHop()
+-- Emergency hop fallback
+local function EmergencyHop()
     Notify("Emergency", "You have used Emergency Server Hop. Please wait while we hop servers. Sorry for the inconvenience.", 5)
     wait(3)
     local success, err = pcall(function()
         TeleportService:Teleport(game.PlaceId, LocalPlayer)
     end)
-    if not success then
-        warn("Emergency server hop failed:", err)
-    end
+    if not success then warn("Emergency hop failed:", err) end
 end
 
--- Server hop function with countdown and error handling
+-- Server hop function
 local function HopServer()
     for i = 5, 1, -1 do
         StatusLabel.Text = ("Status: Server hop in %ds..."):format(i)
@@ -268,52 +282,50 @@ local function HopServer()
         end)
         if not ok then
             warn("Teleport failed:", err)
-            EmergencyServerHop()
+            EmergencyHop()
         end
     else
-        EmergencyServerHop()
+        EmergencyHop()
     end
 end
 
--- Max fruit storage limit
+-- Max fruits to hold
 local MAX_FRUITS = 2
-local fruitsCollected = 0
+local collectedFruits = 0
 
 -- Add Emergency Server Hop Button
-local button = Instance.new("TextButton", MainFrame)
-button.Size = UDim2.new(0, 140, 0, 32)
-button.Position = UDim2.new(0.5, -70, 0.9, -10)
-button.BackgroundColor3 = Color3.fromRGB(180, 30, 50)
-button.BackgroundTransparency = 0.15
-button.AutoButtonColor = true
-button.Font = Enum.Font.GothamBold
-button.TextColor3 = Color3.fromRGB(255, 220, 220)
-button.TextScaled = true
-button.Text = "Emergency Server Hop"
-local buttonCorner = Instance.new("UICorner", button)
-buttonCorner.CornerRadius = UDim.new(0, 12)
+local emergencyButton = Instance.new("TextButton", MainFrame)
+emergencyButton.Size = UDim2.new(0,140,0,32)
+emergencyButton.Position = UDim2.new(0.5,-70,0.9,-10)
+emergencyButton.BackgroundColor3 = Color3.fromRGB(180,30,50)
+emergencyButton.BackgroundTransparency = 0.15
+emergencyButton.Font = Enum.Font.GothamBold
+emergencyButton.TextColor3 = Color3.fromRGB(255,220,220)
+emergencyButton.TextScaled = true
+emergencyButton.Text = "Emergency Server Hop"
+local buttonCorner = Instance.new("UICorner", emergencyButton)
+buttonCorner.CornerRadius = UDim.new(0,12)
 
-button.MouseButton1Click:Connect(function()
+emergencyButton.MouseButton1Click:Connect(function()
     Notify("Warning", "You have used Emergency Server Hop. Please wait while we hop servers. Sorry for the inconvenience.", 5)
     wait(1)
-    EmergencyServerHop()
+    EmergencyHop()
 end)
 
--- Startup Warning Label above the Emergency Hop Button
+-- Startup warning label above emergency button
 local warningLabel = Instance.new("TextLabel", MainFrame)
-warningLabel.Size = UDim2.new(0, 280, 0, 40)
-warningLabel.Position = UDim2.new(0.5, -140, 0.82, -50)
+warningLabel.Size = UDim2.new(0,280,0,40)
+warningLabel.Position = UDim2.new(0.5,-140,0.82,-50)
 warningLabel.BackgroundTransparency = 0.7
-warningLabel.BackgroundColor3 = Color3.fromRGB(100, 25, 25)
-warningLabel.TextColor3 = Color3.fromRGB(255, 180, 180)
+warningLabel.BackgroundColor3 = Color3.fromRGB(100,25,25)
+warningLabel.TextColor3 = Color3.fromRGB(255,180,180)
 warningLabel.Font = Enum.Font.GothamBold
 warningLabel.TextScaled = true
 warningLabel.TextWrapped = true
 warningLabel.Text = "⚠️ WARNING: 'Emergency Server Hop' button is only for use if the script breaks. Sorry for the inconvenience."
 local warningCorner = Instance.new("UICorner", warningLabel)
-warningCorner.CornerRadius = UDim.new(0, 12)
+warningCorner.CornerRadius = UDim.new(0,12)
 
--- Fade out the warning label
 spawn(function()
     wait(8)
     for i = 1, 20 do
@@ -324,7 +336,7 @@ spawn(function()
     warningLabel:Destroy()
 end)
 
--- Main loop for fruit finding, collecting, and server hopping
+-- Main loop
 while true do
     local fruits = {}
     for _, model in pairs(Workspace:GetDescendants()) do
@@ -337,41 +349,40 @@ while true do
     if #fruits == 0 then
         StatusLabel.Text = "Status: No fruits found, hopping server..."
         HopServer()
+    elseif collectedFruits >= MAX_FRUITS then
+        StatusLabel.Text = "Status: Storage full, hopping server..."
+        HopServer()
     else
-        if fruitsCollected >= MAX_FRUITS then
-            StatusLabel.Text = "Status: Storage full, hopping server..."
-            HopServer()
-        else
-            for _, fruit in pairs(fruits) do
-                if fruit.PrimaryPart then
-                    StatusLabel.Text = "Status: Moving to fruit..."
-                    local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
-                        {CFrame = CFrame.new(fruit.PrimaryPart.Position + Vector3.new(0, 3, 0))})
-                    tween:Play()
-                    tween.Completed:Wait()
-                    local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool") or LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
-                    if tool and tool.Name:find("Fruit") then
-                        local success, err = pcall(function()
-                            ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", tool:GetAttribute("OriginalName"), tool)
-                        end)
-                        if success then
-                            fruitsCollected = fruitsCollected + 1
-                            FruitCountLabel.Text = "Fruits Collected: " .. fruitsCollected
-                            Notify("Fruit Finder", "Fruit collected!", 3)
-                            if fruitsCollected >= MAX_FRUITS then
-                                StatusLabel.Text = "Status: Storage full, preparing to hop..."
-                                HopServer()
-                                break
-                            end
-                        else
-                            warn("Failed to store fruit:", err)
+        for _, fruit in pairs(fruits) do
+            if fruit.PrimaryPart then
+                StatusLabel.Text = "Status: Moving to fruit..."
+                local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(fruit.PrimaryPart.Position + Vector3.new(0,3,0))})
+                tween:Play()
+                tween.Completed:Wait()
+
+                local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool") or LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
+                if tool and tool.Name:find("Fruit") then
+                    local success, err = pcall(function()
+                        ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", tool:GetAttribute("OriginalName"), tool)
+                    end)
+                    if success then
+                        collectedFruits = collectedFruits + 1
+                        FruitCountLabel.Text = "Fruits Collected: " .. collectedFruits
+                        Notify("Fruit Finder", "Fruit collected!", 3)
+                        if collectedFruits >= MAX_FRUITS then
+                            StatusLabel.Text = "Status: Storage full, preparing to hop..."
                             HopServer()
                             break
                         end
+                    else
+                        warn("Failed to store fruit:", err)
+                        HopServer()
+                        break
                     end
                 end
             end
         end
     end
+
     wait(0.8)
 end
