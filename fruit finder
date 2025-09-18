@@ -1,12 +1,16 @@
+-- Services
 local HttpService = game:GetService("HttpService")
 local Workspace = game:GetService("Workspace")
-local Notification = require(game:GetService("ReplicatedStorage").Notification)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local Notification = require(ReplicatedStorage.Notification)
 
+-- Settings
 local SaveFileName = "FruitFinderLaDev.json"
 local Settings = {}
 
+-- BodyVelocity & BodyAngularVelocity templates
 local bv = Instance.new("BodyVelocity")
 bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
 bv.Velocity = Vector3.new()
@@ -17,159 +21,170 @@ bav.AngularVelocity = Vector3.new()
 bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 bav.Name = "bAV"
 
+-- Save settings to file
 local function SaveSettings()
-    HttpService:JSONEncode(Settings)
+    writefile(SaveFileName, HttpService:JSONEncode(Settings))
 end
 
-local function ReadSetting()
+-- Read settings from file
+local function ReadSettings()
+    if not pcall(function() readfile(SaveFileName) end) then
+        SaveSettings()
+    end
+
     local success, result = pcall(function()
         return HttpService:JSONDecode(readfile(SaveFileName))
     end)
-    if success then 
+
+    if success and type(result) == "table" then
         return result
     else
         SaveSettings()
-        return ReadSetting()
+        return {}
     end
 end
-Settings = ReadSetting()
 
+Settings = ReadSettings()
+
+-- Optimized Server Hopping
 local function HopServer()
+    local visitedServers = {} -- session cache
+
     local function Hop()
-        for i=1,200 do
-            local serverlist = ReplicatedStorage.__ServerBrowser:InvokeServer(i)
-            for k,v in pairs(serverlist) do
-                if k~=game.JobId and v.Count < 11 then
-                    if not Settings[k] or tick() - Settings[k].Time > 60*60  then
-                        Settings[k] = {
-                            Time = tick()
-                        }
+        local page = 1
+        while true do
+            local serverlist = ReplicatedStorage.__ServerBrowser:InvokeServer(page)
+            if not serverlist or next(serverlist) == nil then
+                break
+            end
+
+            for jobId, info in pairs(serverlist) do
+                if jobId ~= game.JobId and info.Count < 11 then
+                    local lastVisit = (Settings[jobId] and Settings[jobId].Time) or 0
+                    if tick() - lastVisit > 60 * 60 and not visitedServers[jobId] then
+                        visitedServers[jobId] = true
+                        Settings[jobId] = {Time = tick()}
                         SaveSettings()
-                        ReplicatedStorage.__ServerBrowser:InvokeServer("teleport",k)
+                        ReplicatedStorage.__ServerBrowser:InvokeServer("teleport", jobId)
                         return true
-                    elseif tick() - Settings[k].Time > 60*120 then
-                        Settings[k] = nil
                     end
                 end
             end
+
+            page = page + 1
         end
         return false
     end
+
+    -- Retry teleport on failure
     if not getgenv().Loaded then
-        local function child(childinstance)
-            if childinstance.Name == "ErrorPrompt" then
-                if childinstance.Visible then
-                    if childinstance.TitleFrame.ErrorTitle.Text == "Teleport Failed" then
+        local function onChildAdded(childInstance)
+            if childInstance.Name == "ErrorPrompt" then
+                local function checkFail()
+                    if childInstance.Visible and childInstance.TitleFrame.ErrorTitle.Text == "Teleport Failed" then
                         HopServer()
                     end
                 end
-                childinstance:GetPropertyChangedSignal("Visible"):Connect(function()
-                    if childinstance.Visible then
-                        if childinstance.TitleFrame.ErrorTitle.Text == "Teleport Failed" then
-                            HopServer()
-                        end
-                    end
-                end)
+                checkFail()
+                childInstance:GetPropertyChangedSignal("Visible"):Connect(checkFail)
             end
         end
+
         for _, v in pairs(game.CoreGui.RobloxPromptGui.promptOverlay:GetChildren()) do
-            child(v)
+            onChildAdded(v)
         end
-        game.CoreGui.RobloxPromptGui.promptOverlay.ChildAdded:Connect(child)
+        game.CoreGui.RobloxPromptGui.promptOverlay.ChildAdded:Connect(onChildAdded)
         getgenv().Loaded = true
     end
-    while not Hop() do wait() end
+
+    while not Hop() do
+        task.wait(1)
+    end
     SaveSettings()
 end
 
-repeat
-    task.wait()
-until game:IsLoaded() and game.Players.LocalPlayer:FindFirstChild("PlayerGui") and game.Players.LocalPlayer.PlayerGui:FindFirstChild("Main")
+-- Wait for game to fully load
+repeat task.wait() until game:IsLoaded() and Players.LocalPlayer:FindFirstChild("PlayerGui") and Players.LocalPlayer.PlayerGui:FindFirstChild("Main")
 
 Notification.new("Check !!"):Display()
-wait(0.5)
+task.wait(0.5)
 getgenv().Ran = true
 
-if getgenv().Ran == true then
+-- Display fruit names above them
+if getgenv().Ran then
     for _, v in pairs(Workspace:GetDescendants()) do
-        if v.ClassName == 'TouchTransmitter' and v.Parent.Name == 'Handle' then
-            local BillboardGui = Instance.new('BillboardGui')
-            local TextLabel = Instance.new('TextLabel')
+        if v:IsA("TouchTransmitter") and v.Parent.Name == "Handle" then
+            local BillboardGui = Instance.new("BillboardGui")
+            local TextLabel = Instance.new("TextLabel")
 
-            BillboardGui.AlwaysOnTop = true -- if its on top or not
-            BillboardGui.Size = UDim2.new(0, 60, 0, 60) -- size of it
-            BillboardGui.StudsOffset = Vector3.new(0,2,0)
+            BillboardGui.AlwaysOnTop = true
+            BillboardGui.Size = UDim2.new(0, 60, 0, 60)
+            BillboardGui.StudsOffset = Vector3.new(0, 2, 0)
+            BillboardGui.Parent = v.Parent
 
-            
-            BillboardGui.Parent = v.Parent -- what the billboardgui goes into
-            TextLabel.Parent = BillboardGui -- putting textlabel into billboardgui
-            TextLabel.BackgroundColor3 = Color3.new(1,1,1) -- color
-            TextLabel.BackgroundTransparency = 1 -- transparency
-            TextLabel.Size = UDim2.new(1, 0, 1, 0) -- size
-            TextLabel.Text = v.Parent.Parent.Name -- what the label says
-            TextLabel.TextColor3 = Color3.new(1, 0, 0) -- color
-            TextLabel.TextScaled = true -- if the text is scaled or not
+            TextLabel.Parent = BillboardGui
+            TextLabel.BackgroundTransparency = 1
+            TextLabel.Size = UDim2.new(1, 0, 1, 0)
+            TextLabel.Text = v.Parent.Parent.Name
+            TextLabel.TextColor3 = Color3.new(1, 0, 0)
+            TextLabel.TextScaled = true
         end
     end
 
-    wait(0.5)
+    task.wait(0.5)
 
-    if game:GetService("Players").LocalPlayer.PlayerGui:WaitForChild("Main", 9e9):FindFirstChild("ChooseTeam") then
-        for i,v in pairs({"MouseButton1Click", "MouseButton1Down", "Activated"}) do
-            for i,v in pairs(getconnections(game:GetService("Players").LocalPlayer.PlayerGui.Main.ChooseTeam.Container.Pirates.Frame.ViewportFrame.TextButton[v])) do
-                v.Function()
+    local mainGui = Players.LocalPlayer.PlayerGui.Main
+    if mainGui:FindFirstChild("ChooseTeam") then
+        local buttons = mainGui.ChooseTeam.Container.Pirates.Frame.ViewportFrame:GetChildren()
+        for _, btn in pairs(buttons) do
+            if btn:IsA("TextButton") then
+                for _, event in pairs(getconnections(btn.Activated)) do
+                    event.Function()
+                end
             end
         end
 
-        wait(1)
+        local function notify(title, text)
+            game.StarterGui:SetCore("SendNotification", {
+                Title = title;
+                Text = text;
+                Duration = 5;
+            })
+        end
 
-        game.StarterGui:SetCore("SendNotification", {
-            Title = "---[WELCOME FROM 𝓛𝓐 𝓓ev YOUR FAVORITE SCRIPTER 🤙--";
-            Text = ""..game.Players.LocalPlayer.DisplayName.."";
-            Duration = math.huge;
-        })
-
-        wait(0.5)
-
-        game.StarterGui:SetCore("SendNotification", {
-            Title = "---[CREATOR]---";
-            Text = "Made By 𝓛𝓐 𝓓ev#1222";
-            Duration = math.huge;
-        })
-
-        wait(0.5)
-
-        game.StarterGui:SetCore("SendNotification", {
-            Title = "---[SOCIAL MEDIA]---";
-            Text = "LA Hub Team Discord\nhttps://discord.gg/J6ukvmpv3p";
-            Duration = math.huge;
-        })
-
-        wait(0.5)
+        notify("---[WELCOME FROM YOUNG YOUR FAVORITE SCRIPTER 🤙---", Players.LocalPlayer.DisplayName)
+        task.wait(0.5)
+        notify("---[CREATOR]---", "Made By young")
+        task.wait(0.5)
+        notify("---[SOCIAL MEDIA]---", "LA Hub Team Discord\nhttps://discord.gg/J6ukvmpv3p")
     end
 end
 
-repeat task.wait(0.1) until game.Workspace.Characters:FindFirstChild(game.Players.LocalPlayer.Name)
+repeat task.wait(0.1) until Workspace.Characters:FindFirstChild(Players.LocalPlayer.Name)
 
+-- Main loop
 while true do
-local model = game.Workspace:FindFirstChild("Fruit")
-if not model or not model:IsA("Model") then
-require(game:GetService("ReplicatedStorage").Notification).new("Wait Hop Server!!"):Display()
-HopServer()
-else
-local chr = game.Players.LocalPlayer.Character
-local fruit = chr:FindFirstChildOfClass("Tool") and chr:FindFirstChildOfClass("Tool").Name:find("Fruit") and chr:FindFirstChildOfClass("Tool") or (function()
-for _,fr in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do
-if fr.Name:find("Fruit") then
-return fr
-end
-end
-end)()
+    local model = Workspace:FindFirstChild("Fruit")
+    if not model or not model:IsA("Model") then
+        Notification.new("Wait Hop Server!!"):Display()
+        HopServer()
+    else
+        local chr = Players.LocalPlayer.Character
+        local fruit = chr:FindFirstChildOfClass("Tool")
+        if not fruit or not fruit.Name:find("Fruit") then
+            for _, fr in pairs(Players.LocalPlayer.Backpack:GetChildren()) do
+                if fr.Name:find("Fruit") then
+                    fruit = fr
+                    break
+                end
+            end
+        end
 
-    if fruit then
-        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StoreFruit", fruit:GetAttribute("OriginalName"), fruit)
-        wait(0.5)
+        if fruit then
+            ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", fruit:GetAttribute("OriginalName"), fruit)
+            task.wait(0.5)
+        end
+
+        HopServer()
     end
-    
-    HopServer()
 end
