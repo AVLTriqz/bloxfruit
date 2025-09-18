@@ -1,4 +1,4 @@
---// Services ctt
+--// Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -15,6 +15,35 @@ local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 --// UI Blur Effect for depth
 local blur = Instance.new("BlurEffect", Lighting)
 blur.Size = 8
+
+--// Utility: Safe WaitForChild Chain
+local function WaitForHierarchy(root, ...)
+    local current = root
+    for i = 1, select("#", ...) do
+        local childName = select(i, ...)
+        current = current:WaitForChild(childName)
+    end
+    return current
+end
+
+-- Use safe wait-for-child chain for deep objects to prevent nil indices
+local MapServices
+local ArenaComponentClient
+local ArenaFishComponent
+
+-- Attempt to wait and assign securely
+local function InitComponents()
+    MapServices = WaitForHierarchy(ReplicatedStorage, "Controllers", "MapServices")
+    ArenaComponentClient = MapServices:WaitForChild("ArenaComponentClient")
+    ArenaFishComponent = ArenaComponentClient:WaitForChild("ArenaFishComponent")
+end
+
+-- Initialize components in a protected call
+local success, err = pcall(InitComponents)
+if not success then
+    warn("Failed to setup MapServices hierarchy:", err)
+    -- Proceed but warn
+end
 
 --// Utility: Create fancy frame with glass effect and shadow
 local function FancyFrame(parent, size, pos, color, cornerRadius)
@@ -168,7 +197,7 @@ end
 
 -- Fruit ESP with pulsing rainbow text
 local function AddESP(fruit)
-    if not fruit.PrimaryPart then return end
+    if not fruit or not fruit.PrimaryPart then return end
     local bgui = Instance.new("BillboardGui", fruit)
     bgui.AlwaysOnTop = true
     bgui.Size = UDim2.new(0, 84, 0, 28)
@@ -346,4 +375,3 @@ while true do
     end
     wait(0.8)
 end
-
